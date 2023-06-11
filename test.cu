@@ -4,8 +4,7 @@
 #include <float.h>
 #include <cuda_runtime.h>
 
-#define MAX_ITERATIONS 1
-#define TOLERANCE 1e-5
+#define TOLERANCE 1e-3
 
 __global__ void normalizeMatrix(float *matrix, int size)
 {
@@ -29,18 +28,19 @@ __global__ void expandMatrix(float *matrix, float *tempMatrix, int size)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
     {
+        float sum = 0.0f;
         for (int i = 0; i < size; i++)
         {
             for (int j = 0; j < size; j++)
             {
-                matrix[idx * size + j] += matrix[idx * size + i] * matrix[i * size + j];
-                tempMatrix[idx * size + j] = matrix[idx * size + j];
+                sum += matrix[idx * size + i] * matrix[i * size + j];
+                tempMatrix[idx * size + j] = sum;
             }
         }
     }
 }
 
-__global__ void inflateMatrix(float *matrix, float *tempMatrix, int size)
+__global__ void inflateMatrix(float *matrix, int size)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
@@ -54,7 +54,6 @@ __global__ void inflateMatrix(float *matrix, float *tempMatrix, int size)
         {
             matrix[idx * size + i] = matrix[idx * size + i] * matrix[idx * size + i];
             matrix[idx * size + i] /= column_sum;
-            tempMatrix[idx * size + i] = matrix[idx * size + i];
         }
     }
 }
@@ -100,7 +99,7 @@ void markovClustering(float *matrix, int size)
         expandMatrix<<<grid_size, block_size>>>(d_matrix, d_tempMatrix, size);
         cudaDeviceSynchronize();
 
-        inflateMatrix<<<grid_size, block_size>>>(d_matrix, d_tempMatrix, size);
+        inflateMatrix<<<grid_size, block_size>>>(d_tempMatrix, size);
         cudaDeviceSynchronize();
 
         // Calculate difference between matrices
