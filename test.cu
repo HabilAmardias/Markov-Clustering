@@ -33,9 +33,9 @@ __global__ void expandMatrix(float *matrix, float *tempMatrix, int size)
         {
             for (int j = 0; j < size; j++)
             {
-                sum += matrix[idx * size + i] * matrix[i * size + j];
-                tempMatrix[idx * size + j] = sum;
+                sum += matrix[idx * size + j] * matrix[j * size + i];
             }
+            tempMatrix[idx * size + i] = sum;
         }
     }
 }
