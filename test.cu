@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 
 #define MAX_ITERATIONS 1
+#define TOLERANCE 1e-5
 
 __global__ void normalizeMatrix(float *matrix, int size)
 {
@@ -22,7 +23,7 @@ __global__ void normalizeMatrix(float *matrix, int size)
     }
 }
 
-__global__ void expandMatrix(float *matrix, int size)
+__global__ void expandMatrix(float *matrix, float *tempMatrix, int size)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
@@ -32,12 +33,13 @@ __global__ void expandMatrix(float *matrix, int size)
             for (int j = 0; j < size; j++)
             {
                 matrix[idx * size + j] += matrix[idx * size + i] * matrix[i * size + j];
+                tempMatrix[idx * size + j] = matrix[idx * size + j];
             }
         }
     }
 }
 
-__global__ void inflateMatrix(float *matrix, int size)
+__global__ void inflateMatrix(float *matrix, float *tempMatrix, int size)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
@@ -51,14 +53,32 @@ __global__ void inflateMatrix(float *matrix, int size)
         {
             matrix[idx * size + i] = matrix[idx * size + i] * matrix[idx * size + i];
             matrix[idx * size + i] /= column_sum;
+            tempMatrix[idx * size + i] = matrix[idx * size + i];
         }
+    }
+}
+
+__global__ void calculateDifference(float *matrixA, float *matrixB, int size, float *diff)
+{
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx == 0)
+    {
+        float sumSqDiff = 0.0f;
+        for (int i = 0; i < size * size; i++)
+        {
+            float error = matrixA[i] - matrixB[i];
+            sumSqDiff += error * error;
+        }
+        *diff = sqrtf(sumSqDiff / (size * size));
     }
 }
 
 void markovClustering(float *matrix, int size)
 {
     float *d_matrix;
+    float *d_tempMatrix;
     cudaMalloc((void **)&d_matrix, size * size * sizeof(float));
+    cudaMalloc((void **)&d_tempMatrix, size * size * sizeof(float));
     cudaMemcpy(d_matrix, matrix, size * size * sizeof(float), cudaMemcpyHostToDevice);
 
     dim3 block_size(256);
@@ -68,18 +88,34 @@ void markovClustering(float *matrix, int size)
     normalizeMatrix<<<grid_size, block_size>>>(d_matrix, size);
     cudaDeviceSynchronize();
 
+    // Initialize variables for convergence check
+    float difference = 10000;
+    float *d_difference;
+    cudaMalloc((void **)&d_difference, sizeof(float));
+
     // Expansion-Inflation iterations
-    for (int i = 0; i < MAX_ITERATIONS; i++)
+    while (difference > TOLERANCE)
     {
-        expandMatrix<<<grid_size, block_size>>>(d_matrix, size);
+        expandMatrix<<<grid_size, block_size>>>(d_matrix, d_tempMatrix, size);
         cudaDeviceSynchronize();
 
-        inflateMatrix<<<grid_size, block_size>>>(d_matrix, size);
+        inflateMatrix<<<grid_size, block_size>>>(d_matrix, d_tempMatrix, size);
         cudaDeviceSynchronize();
+
+        // Calculate difference between matrices
+        calculateDifference<<<grid_size, block_size>>>(d_matrix, d_tempMatrix, size, d_difference);
+        cudaMemcpy(&difference, d_difference, sizeof(float), cudaMemcpyDeviceToHost);
+
+        // Swap matrices
+        float *temp = d_matrix;
+        d_matrix = d_tempMatrix;
+        d_tempMatrix = temp;
     }
 
     cudaMemcpy(matrix, d_matrix, size * size * sizeof(float), cudaMemcpyDeviceToHost);
     cudaFree(d_matrix);
+    cudaFree(d_tempMatrix);
+    cudaFree(d_difference);
 }
 
 int main()
