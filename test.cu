@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <float.h>
 #include <cuda_runtime.h>
 
 #define MAX_ITERATIONS 1
@@ -89,7 +90,7 @@ void markovClustering(float *matrix, int size)
     cudaDeviceSynchronize();
 
     // Initialize variables for convergence check
-    float difference = 10000;
+    float difference = FLT_MAX;
     float *d_difference;
     cudaMalloc((void **)&d_difference, sizeof(float));
 
