@@ -33,7 +33,7 @@ __global__ void expandMatrix(float *matrix, float *tempMatrix, int size)
         {
             for (int j = 0; j < size; j++)
             {
-                sum += matrix[idx * size + j] * matrix[j * size + i];
+                sum += matrix[j * size + idx] * matrix[j * size + i];
             }
             tempMatrix[idx * size + i] = sum;
         }
@@ -50,10 +50,10 @@ __global__ void inflateMatrix(float *matrix, int size)
         {
             column_sum += matrix[i * size + idx];
         }
-        for (int i = 0; i < size; i++)
+        for (int j = 0; j < size; j++)
         {
-            matrix[idx * size + i] = matrix[idx * size + i] * matrix[idx * size + i];
-            matrix[idx * size + i] /= column_sum;
+            matrix[idx * size + j] = fminf(matrix[idx * size + j] * matrix[idx * size + j], 1.0e30f);
+            matrix[idx * size + j] /= column_sum;
         }
     }
 }
@@ -122,10 +122,10 @@ int main()
 {
     int size = 4;
     float matrix[] = {
-        1.0f, 2.0f, 3.0f, 4.0f,
-        5.0f, 6.0f, 7.0f, 8.0f,
-        9.0f, 10.0f, 11.0f, 12.0f,
-        13.0f, 14.0f, 15.0f, 16.0f};
+        1.0f, 0.2f, 0.0f, 0.8f,
+        0.4f, 0.5f, 0.5f, 0.3f,
+        0.4f, 0.2f, 0.5f, 0.3f,
+        0.2f, 0.1f, 0.0f, 0.6f};
 
     markovClustering(matrix, size);
 
