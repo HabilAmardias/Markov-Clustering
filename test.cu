@@ -14,13 +14,13 @@ __global__ void normalizeMatrix(float *matrix, int size)
         float colSum = 0.0f;
         for (int i = 0; i < size; i++)
         {
-            colSum += matrix[idx * size + i];
+            colSum += matrix[i * size + idx];
         }
         if (colSum != 0.0f)
         {
             for (int i = 0; i < size; i++)
             {
-                matrix[idx * size + i] /= colSum;
+                matrix[i * size + idx] /= colSum;
             }
         }
     }
@@ -120,12 +120,14 @@ void markovClustering(float *matrix, int size)
 
 int main()
 {
-    int size = 4;
+    int size = 6;
     float matrix[] = {
-        1.0f, 0.2f, 0.0f, 0.8f,
-        0.4f, 0.5f, 0.5f, 0.3f,
-        0.4f, 0.2f, 0.5f, 0.3f,
-        0.2f, 0.1f, 0.0f, 0.6f};
+        0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 0.0f,
+        1.0f, 0.0f, 0.2f, 0.0f, 0.0f, 0.0f,
+        0.5f, 0.2f, 0.0f, 0.8f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.8f, 0.0f, 0.3f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.6f,
+        0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f};
 
     markovClustering(matrix, size);
 
