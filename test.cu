@@ -3,8 +3,17 @@
 #include <math.h>
 #include <float.h>
 #include <cuda_runtime.h>
+#include <time.h>
 
 #define TOLERANCE 1e-3
+
+void generateRandomMatrix(float *matrix, int size)
+{
+    for (int i = 0; i < size * size; i++)
+    {
+        matrix[i] = (float)rand();
+    }
+}
 
 __global__ void normalizeMatrix(float *matrix, int size)
 {
@@ -120,20 +129,14 @@ void markovClustering(float *matrix, int size)
 
 int main()
 {
-    int size = 10;
-    float matrix[] = {
-        0.0f, 1.0f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        1.0f, 0.0f, 0.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.5f, 0.2f, 0.0f, 0.8f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.8f, 0.0f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.3f, 0.0f, 0.6f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.6f, 0.0f, 0.4f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.4f, 0.0f, 0.9f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.9f, 0.0f, 0.7f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7f, 0.0f, 0.1f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.1f, 0.0f};
+    int size = 1000;
+    float *matrix = (float *)malloc(size * size * sizeof(float));
 
+    generateRandomMatrix(matrix, size);
+
+    clock_t start = clock();
     markovClustering(matrix, size);
+    clock_t end = clock();
 
     printf("Resulting matrix:\n");
     for (int i = 0; i < size; i++)
@@ -144,6 +147,12 @@ int main()
         }
         printf("\n");
     }
+
+    printf("------------------------------------------\n");
+    double elapsed = double(end - start) / CLOCKS_PER_SEC;
+    printf("Time measured: %.3f seconds.\n", elapsed);
+
+    free(matrix);
 
     return 0;
 }
