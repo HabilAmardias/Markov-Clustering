@@ -11,14 +11,17 @@ __global__ void normalizeMatrix(float *matrix, int size)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
     {
-        float sum = 0.0f;
+        float colSum = 0.0f;
         for (int i = 0; i < size; i++)
         {
-            sum += matrix[i * size + idx];
+            colSum += matrix[idx * size + i];
         }
-        for (int i = 0; i < size; i++)
+        if (colSum != 0.0f)
         {
-            matrix[i * size + idx] /= sum;
+            for (int i = 0; i < size; i++)
+            {
+                matrix[idx * size + i] /= colSum;
+            }
         }
     }
 }
@@ -28,9 +31,9 @@ __global__ void expandMatrix(float *matrix, float *tempMatrix, int size)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
     {
-        float sum = 0.0f;
         for (int i = 0; i < size; i++)
         {
+            float sum = 0.0f;
             for (int j = 0; j < size; j++)
             {
                 sum += matrix[j * size + idx] * matrix[j * size + i];
@@ -45,15 +48,9 @@ __global__ void inflateMatrix(float *matrix, int size)
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size)
     {
-        float column_sum = 0.0f;
-        for (int i = 0; i < size; i++)
-        {
-            column_sum += matrix[i * size + idx];
-        }
         for (int j = 0; j < size; j++)
         {
             matrix[idx * size + j] = fminf(matrix[idx * size + j] * matrix[idx * size + j], 1.0e30f);
-            matrix[idx * size + j] /= column_sum;
         }
     }
 }
@@ -100,6 +97,9 @@ void markovClustering(float *matrix, int size)
         cudaDeviceSynchronize();
 
         inflateMatrix<<<grid_size, block_size>>>(d_tempMatrix, size);
+        cudaDeviceSynchronize();
+
+        normalizeMatrix<<<grid_size, block_size>>>(d_tempMatrix, size);
         cudaDeviceSynchronize();
 
         // Calculate difference between matrices
